@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/openex
+    username: openex
+    password: openex
+  flyway:
+    enabled: false
