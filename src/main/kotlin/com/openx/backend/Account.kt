@@ -13,7 +13,7 @@ data class Account(
     @Column(name = "user_id", nullable = false)
     val userId: UUID,
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     val currency: String,
 
     @Column(name = "created_at")
