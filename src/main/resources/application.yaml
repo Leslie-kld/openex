@@ -7,4 +7,5 @@ spring:
     username: openex
     password: openex
   flyway:
-    enabled: false
+    enabled: true 
+    
