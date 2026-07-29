@@ -1,6 +1,8 @@
 spring:
-  application:
-    name: backend
+  security:
+    user:
+      name: unused
+      password: unused
 
   datasource:
     url: jdbc:postgresql://localhost:5432/openex

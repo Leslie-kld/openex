@@ -9,3 +9,6 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     fun findByTransactionId(transactionId: UUID): List<LedgerEntry>
     fun findByAccountId(accountId: UUID): List<LedgerEntry>
 }
+interface UserRepository : JpaRepository<User, UUID> {
+    fun findByEmail(email: String): User?
+}
