@@ -3,11 +3,13 @@ spring:
     user:
       name: unused
       password: unused
-
   datasource:
     url: jdbc:postgresql://localhost:5432/openex
     username: openex
     password: openex
   flyway:
-    enabled: true 
-    
+    enabled: true
+
+app:
+  jwt:
+    secret: "openex-dev-secret-key-change-this-before-production-use-1234"
