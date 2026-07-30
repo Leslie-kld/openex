@@ -12,3 +12,7 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
 interface UserRepository : JpaRepository<User, UUID> {
     fun findByEmail(email: String): User?
 }
+interface OrderRepository : JpaRepository<Order, UUID> {
+    fun findByUserId(userId: UUID): List<Order>
+}
+interface IdempotencyKeyRepository : JpaRepository<IdempotencyKey, String>
