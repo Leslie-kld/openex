@@ -1,6 +1,7 @@
 package com.openx.backend
 
 import jakarta.validation.Valid
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.transaction.annotation.Transactional
@@ -25,13 +26,19 @@ class AuthController(
             return ResponseEntity.badRequest().body(mapOf("error" to "Email already registered"))
         }
 
-        val user = userRepository.save(
-            User(
-                email = request.email,
-                passwordHash = passwordEncoder.encode(request.password)
-                    ?: throw IllegalStateException("Password encoding failed")
+        val user = try {
+            userRepository.save(
+                User(
+                    email = request.email,
+                    passwordHash = passwordEncoder.encode(request.password)
+                        ?: throw IllegalStateException("Password encoding failed")
+                )
             )
-        )
+        } catch (e: DataIntegrityViolationException) {
+            // Safety net: a concurrent request registered this exact email
+            // between our check above and this save.
+            return ResponseEntity.badRequest().body(mapOf("error" to "Email already registered"))
+        }
 
         accountRepository.save(Account(userId = user.id, currency = "USD"))
 
@@ -42,9 +49,17 @@ class AuthController(
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<Any> {
         val user = userRepository.findByEmail(request.email)
-            ?: return ResponseEntity.status(401).body(mapOf("error" to "Invalid credentials"))
 
-        if (!passwordEncoder.matches(request.password, user.passwordHash)) {
+        // Always run a BCrypt comparison, even for an unknown user, so response
+        // timing doesn't reveal whether the email exists (a real timing side-channel).
+        val passwordMatches = if (user != null) {
+            passwordEncoder.matches(request.password, user.passwordHash)
+        } else {
+            passwordEncoder.matches(request.password, "\$2a\$10\$invalidsaltinvalidsaltinvalidsaltinvalidsa")
+            false
+        }
+
+        if (user == null || !passwordMatches) {
             return ResponseEntity.status(401).body(mapOf("error" to "Invalid credentials"))
         }
 
