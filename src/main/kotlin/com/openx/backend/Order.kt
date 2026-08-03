@@ -32,10 +32,16 @@ data class Order(
     @Column(nullable = false, precision = 18, scale = 8)
     val quantity: BigDecimal,
 
+    @Column(name = "filled_quantity", nullable = false, precision = 18, scale = 8)
+    val filledQuantity: BigDecimal = BigDecimal.ZERO,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val status: OrderStatus = OrderStatus.OPEN,
 
     @Column(name = "created_at")
     val createdAt: LocalDateTime = LocalDateTime.now()
-)
+) {
+    val remainingQuantity: BigDecimal
+        get() = quantity - filledQuantity
+}

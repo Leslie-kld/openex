@@ -27,8 +27,7 @@ class JwtAuthFilter(
                 val authentication = UsernamePasswordAuthenticationToken(email, null, emptyList())
                 SecurityContextHolder.getContext().authentication = authentication
             } catch (e: Exception) {
-                // Invalid or expired token — leave the request unauthenticated,
-                // Spring Security will reject it if the endpoint requires auth
+                // Invalid or expired token — leave the request unauthenticated
             }
         }
 
