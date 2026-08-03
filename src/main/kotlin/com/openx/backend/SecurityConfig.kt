@@ -26,6 +26,7 @@ class SecurityConfig(
             authorizeHttpRequests {
                 authorize("/api/auth/**", permitAll)
                 authorize("/api/health", permitAll)
+                authorize("/error", permitAll)
                 authorize(anyRequest, authenticated)
             }
             addFilterBefore<UsernamePasswordAuthenticationFilter>(jwtAuthFilter)
