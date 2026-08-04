@@ -23,12 +23,13 @@ class SecurityConfig(
         http {
             csrf { disable() }
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
-            authorizeHttpRequests {
+           authorizeHttpRequests {
                 authorize("/api/auth/**", permitAll)
                 authorize("/api/health", permitAll)
                 authorize("/error", permitAll)
+                authorize("/ws/**", permitAll)
                 authorize(anyRequest, authenticated)
-            }
+                }
             addFilterBefore<UsernamePasswordAuthenticationFilter>(jwtAuthFilter)
         }
         return http.build()
