@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { apiPost } from '../api/client'
 import useAuthStore from '../store/authStore'
 
+
 function Dashboard() {
   const { token, email } = useAuthStore()
   const [amount, setAmount] = useState('')
