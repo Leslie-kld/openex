@@ -22,21 +22,21 @@ class AuthController(
     @Transactional
     @PostMapping("/register")
     fun register(@Valid @RequestBody request: RegisterRequest): ResponseEntity<Any> {
-        if (userRepository.findByEmail(request.email) != null) {
+        val normalizedEmail = request.email.trim().lowercase()
+
+        if (userRepository.findByEmail(normalizedEmail) != null) {
             return ResponseEntity.badRequest().body(mapOf("error" to "Email already registered"))
         }
 
         val user = try {
             userRepository.save(
                 User(
-                    email = request.email,
+                    email = normalizedEmail,
                     passwordHash = passwordEncoder.encode(request.password)
                         ?: throw IllegalStateException("Password encoding failed")
                 )
             )
         } catch (e: DataIntegrityViolationException) {
-            // Safety net: a concurrent request registered this exact email
-            // between our check above and this save.
             return ResponseEntity.badRequest().body(mapOf("error" to "Email already registered"))
         }
 
@@ -48,10 +48,9 @@ class AuthController(
 
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<Any> {
-        val user = userRepository.findByEmail(request.email)
+        val normalizedEmail = request.email.trim().lowercase()
+        val user = userRepository.findByEmail(normalizedEmail)
 
-        // Always run a BCrypt comparison, even for an unknown user, so response
-        // timing doesn't reveal whether the email exists (a real timing side-channel).
         val passwordMatches = if (user != null) {
             passwordEncoder.matches(request.password, user.passwordHash)
         } else {
