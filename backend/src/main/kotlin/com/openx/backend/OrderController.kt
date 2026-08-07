@@ -14,6 +14,8 @@ class OrderController(
     private val orderRepository: OrderRepository,
     private val idempotencyKeyRepository: IdempotencyKeyRepository,
     private val matchingEngineService: MatchingEngineService,
+    private val accountRepository: AccountRepository,
+    private val ledgerService: LedgerService,
     private val jsonMapper: JsonMapper
 ) {
 
@@ -40,6 +42,24 @@ class OrderController(
             val errorBody = mapOf("error" to "Limit orders must include a price")
             saveIdempotencyResult(scopedKey, errorBody, 400)
             return ResponseEntity.badRequest().body(errorBody)
+        }
+
+        // Known limitation: only BUY+LIMIT orders are affordability-checked here, since that's
+        // the one case where the exact cost (price x quantity) is known upfront. MARKET orders
+        // and SELL orders (which would need per-asset crypto balances we don't track yet) are
+        // not checked, and can still result in a negative ledger balance if matched.
+        if (request.side == OrderSide.BUY && request.orderType == OrderType.LIMIT) {
+            val account = accountRepository.findAll()
+                .find { it.userId == user.id && it.currency == "USD" }
+
+            val balance = account?.let { ledgerService.getBalance(it.id) } ?: java.math.BigDecimal.ZERO
+            val requiredFunds = request.price!! * request.quantity
+
+            if (balance < requiredFunds) {
+                val errorBody = mapOf("error" to "Insufficient balance for this order")
+                saveIdempotencyResult(scopedKey, errorBody, 400)
+                return ResponseEntity.badRequest().body(errorBody)
+            }
         }
 
         val newOrder = Order(
