@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { Client } from '@stomp/stompjs'
 import useOrderBookStore from '../store/orderBookStore'
 
+// TODO: move to a Vite env variable (import.meta.env.VITE_WS_URL) before any real deployment,
+// and use wss:// for secure origins to avoid mixed-content blocking.
 const WS_URL = 'ws://localhost:8080/ws'
 
 function useOrderBookSocket() {
@@ -14,11 +16,15 @@ function useOrderBookSocket() {
       reconnectDelay: 3000,
       onConnect: () => {
         client.subscribe('/topic/orderbook', (message) => {
-          const parsed = JSON.parse(message.body)
-          if (parsed.type === 'ORDER_UPDATE') {
-            applyOrderUpdate(parsed.data)
-          } else if (parsed.type === 'TRADE_EXECUTED') {
-            applyTrade(parsed.data)
+          try {
+            const parsed = JSON.parse(message.body)
+            if (parsed.type === 'ORDER_UPDATE') {
+              applyOrderUpdate(parsed.data)
+            } else if (parsed.type === 'TRADE_EXECUTED') {
+              applyTrade(parsed.data)
+            }
+          } catch (err) {
+            console.error('Failed to parse order book message', err)
           }
         })
       },

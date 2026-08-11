@@ -5,9 +5,15 @@ const useOrderBookStore = create((set) => ({
   trades: [], // most recent first, capped list
 
   applyOrderUpdate: (order) =>
-    set((state) => ({
-      orders: { ...state.orders, [order.orderId]: order },
-    })),
+    set((state) => {
+      const orders = { ...state.orders }
+      if (order.status === 'FILLED' || order.status === 'CANCELLED') {
+        delete orders[order.orderId]
+      } else {
+        orders[order.orderId] = order
+      }
+      return { orders }
+    }),
 
   applyTrade: (trade) =>
     set((state) => ({

@@ -90,15 +90,15 @@ function Trading() {
 
           <div style={{ marginBottom: '1rem' }}>
             <label>Quantity</label><br />
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              required
-              style={{ width: '100%' }}
-            />
+           <input
+  type="number"
+  step="0.01"
+  min="0.01"
+  value={quantity}
+  onChange={(e) => setQuantity(e.target.value)}
+  required
+  style={{ width: '100%' }}
+/>
           </div>
 
           <button type="submit">Place Order</button>
