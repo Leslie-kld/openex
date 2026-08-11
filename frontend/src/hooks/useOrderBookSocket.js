@@ -16,15 +16,18 @@ function useOrderBookSocket() {
       reconnectDelay: 3000,
       onConnect: () => {
         client.subscribe('/topic/orderbook', (message) => {
+          let parsed
           try {
-            const parsed = JSON.parse(message.body)
-            if (parsed.type === 'ORDER_UPDATE') {
-              applyOrderUpdate(parsed.data)
-            } else if (parsed.type === 'TRADE_EXECUTED') {
-              applyTrade(parsed.data)
-            }
+            parsed = JSON.parse(message.body)
           } catch (err) {
             console.error('Failed to parse order book message', err)
+            return
+          }
+
+          if (parsed.type === 'ORDER_UPDATE') {
+            applyOrderUpdate(parsed.data)
+          } else if (parsed.type === 'TRADE_EXECUTED') {
+            applyTrade(parsed.data)
           }
         })
       },
