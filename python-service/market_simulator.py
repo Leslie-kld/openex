@@ -24,7 +24,7 @@ def generate_price_series(
     price_multipliers = np.cumprod(1 + returns)
     prices = start_price * price_multipliers
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     timestamps = [now - timedelta(seconds=(num_ticks - i)) for i in range(num_ticks)]
 
     df = pd.DataFrame({
