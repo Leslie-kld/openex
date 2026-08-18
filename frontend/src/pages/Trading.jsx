@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ChatWidget from '../components/ChatWidget'
 import { apiPost } from '../api/client'
 import useAuthStore from '../store/authStore'
 import useOrderBookStore from '../store/orderBookStore'
@@ -146,6 +147,11 @@ function Trading() {
             {t.quantity} @ ${t.price}
           </div>
         ))}
+      </div>
+
+      <div style={{ minWidth: '280px' }}>
+        <h2>AI Assistant</h2>
+        <ChatWidget token={token} />
       </div>
     </div>
   )
