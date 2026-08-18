@@ -1,8 +1,9 @@
 import math
 import pandas as pd
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from market_simulator import generate_price_series
+from chat_agent import get_chat_response
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"])
@@ -28,5 +29,16 @@ def get_ticks():
     return jsonify(records)
 
 
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    user_message = data.get("message", "")
+    jwt_token = request.headers.get("Authorization", "").replace("Bearer ", "") or None
+    if not user_message:
+        return jsonify({"error": "message is required"}), 400
+    reply = get_chat_response(user_message, jwt_token)
+    return jsonify({"reply": reply})
+
+
 if __name__ == "__main__":
-    app.run(port=5001)
+    app.run(host="0.0.0.0", port=5001, debug=True)
