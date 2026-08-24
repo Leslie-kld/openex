@@ -31,12 +31,18 @@ def get_ticks():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     user_message = data.get("message", "")
     jwt_token = request.headers.get("Authorization", "").replace("Bearer ", "") or None
     if not user_message:
         return jsonify({"error": "message is required"}), 400
-    reply = get_chat_response(user_message, jwt_token)
+    try:
+        reply = get_chat_response(user_message, jwt_token)
+    except Exception as e:
+        # get_chat_response already handles the expected failure modes internally;
+        # this is a last-resort guard so the frontend always gets valid JSON back
+        # instead of Flask's HTML error page (which breaks res.json() client-side).
+        return jsonify({"reply": f"Unexpected server error: {e}"}), 200
     return jsonify({"reply": reply})
 
 

@@ -63,5 +63,3 @@ function ChatWidget({ token }) {
     </div>
   )
 }
-
-export default ChatWidget
