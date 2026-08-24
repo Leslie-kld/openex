@@ -1,17 +1,21 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
-function ChatWidget({ token }) {
+export default function ChatWidget({ token }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const send = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || loading) return
     const userMsg = { role: 'user', text: input }
-    setMessages((m) => [...m, userMsg])
+    setMessages(m => [...m, userMsg])
     setInput('')
     setLoading(true)
-
     try {
       const res = await fetch('http://localhost:5001/api/chat', {
         method: 'POST',
@@ -22,43 +26,64 @@ function ChatWidget({ token }) {
         body: JSON.stringify({ message: input }),
       })
       const data = await res.json()
-      setMessages((m) => [...m, { role: 'ai', text: data.reply }])
+      setMessages(m => [...m, { role: 'ai', text: data.reply }])
     } catch {
-      setMessages((m) => [...m, { role: 'ai', text: 'Error reaching AI service.' }])
+      setMessages(m => [...m, { role: 'ai', text: 'Connection error.' }])
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{ border: '1px solid #ccc', borderRadius: 4, padding: '1rem', maxWidth: 320 }}>
-      <div style={{ height: 200, overflowY: 'auto', marginBottom: '0.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {messages.length === 0 && (
+          <div style={{ color: 'var(--text-dim)', fontSize: 11, fontFamily: 'var(--mono)', marginTop: 8 }}>
+            Ask about your balance, orders, or trading concepts.
+          </div>
+        )}
         {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: '0.5rem', textAlign: m.role === 'user' ? 'right' : 'left' }}>
-            <span style={{
-              background: m.role === 'user' ? '#8884d8' : '#eee',
-              color: m.role === 'user' ? 'white' : 'black',
-              padding: '0.25rem 0.5rem',
-              borderRadius: 4,
-              display: 'inline-block',
-              maxWidth: '85%',
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 2 }}>
+              {m.role === 'user' ? 'YOU' : 'AI'}
+            </div>
+            <div style={{
+              background: m.role === 'user' ? 'var(--bg-raised)' : 'var(--bg-base)',
+              border: `1px solid ${m.role === 'user' ? 'var(--border-bright)' : 'var(--border)'}`,
+              padding: '6px 8px',
+              fontSize: 11,
+              fontFamily: 'var(--mono)',
+              maxWidth: '90%',
               wordBreak: 'break-word',
+              lineHeight: 1.5,
+              color: m.role === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}>
               {m.text}
-            </span>
+            </div>
           </div>
         ))}
-        {loading && <div style={{ color: '#888' }}>Thinking...</div>}
+        {loading && (
+          <div style={{ color: 'var(--text-dim)', fontSize: 11, fontFamily: 'var(--mono)' }}>
+            processing...
+          </div>
+        )}
+        <div ref={bottomRef} />
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ borderTop: '1px solid var(--border)', display: 'flex' }}>
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="Ask about your account..."
-          style={{ flex: 1 }}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && send()}
+          placeholder="ask ai..."
+          style={{ flex: 1, border: 'none', borderRadius: 0, padding: '8px 10px', fontSize: 11 }}
         />
-        <button onClick={send}>Send</button>
+        <button
+          onClick={send}
+          disabled={loading}
+          style={{ border: 'none', borderLeft: '1px solid var(--border)', borderRadius: 0, padding: '0 12px', fontSize: 10 }}
+        >
+          ›
+        </button>
       </div>
     </div>
   )
