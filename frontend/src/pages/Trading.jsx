@@ -3,6 +3,7 @@ import { apiPost } from '../api/client'
 import useAuthStore from '../store/authStore'
 import useOrderBookStore from '../store/orderBookStore'
 import useOrderBookSocket from '../hooks/useOrderBookSocket'
+import useResizableColumns from '../hooks/useResizableColumns'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
@@ -137,11 +138,11 @@ export default function Trading() {
   const [chartType, setChartType] = useState('line')
 
   useOrderBookSocket()
+  const { widths, startDrag } = useResizableColumns([240, 180])
   const orders = useOrderBookStore(s => s.orders)
   const trades = useOrderBookStore(s => s.trades)
   const currentPrice = ticks[ticks.length - 1]?.price
 
-  // Fetch market ticks every 5 s
   useEffect(() => {
     const load = () =>
       fetch('http://localhost:5001/api/market/ticks')
@@ -199,16 +200,39 @@ export default function Trading() {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '240px 1fr 180px',
+      gridTemplateColumns: `${widths[0]}px 1fr ${widths[1]}px`,
       gridTemplateRows: '1fr 140px',
       height: '100%',
-      gap: 1,
+      gap: 0,
       background: 'var(--border)',
       overflow: 'hidden',
+      position: 'relative',
     }}>
 
+      {/* Drag handle: AI panel <-> Chart */}
+      <div
+        onMouseDown={startDrag(0)}
+        style={{
+          position: 'absolute', left: widths[0] - 2, top: 0, bottom: 140,
+          width: 4, cursor: 'col-resize', zIndex: 10, background: 'transparent',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+      />
+
+      {/* Drag handle: Chart <-> Order panel */}
+      <div
+        onMouseDown={startDrag(1)}
+        style={{
+          position: 'absolute', right: widths[1] - 2, top: 0, bottom: 140,
+          width: 4, cursor: 'col-resize', zIndex: 10, background: 'transparent',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+      />
+
       {/* ── COL 1 FULL HEIGHT: AI Advisor ── */}
-      <div className="panel" style={{ gridRow: '1 / 3', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="panel" style={{ gridRow: '1 / 3', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--border)' }}>
         <div className="panel-header">AI Advisor</div>
         <AICorner token={token} />
       </div>
@@ -254,11 +278,10 @@ export default function Trading() {
       </div>
 
       {/* ── COL 3 TOP: Order entry ── */}
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', borderLeft: '1px solid var(--border)' }}>
         <div className="panel-header">New Order</div>
         <div style={{ padding: 8, flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-          {/* BUY / SELL toggle */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             {['BUY', 'SELL'].map(s => (
               <button key={s} onClick={() => setSide(s)} className={side === s ? s.toLowerCase() : ''}
@@ -268,7 +291,6 @@ export default function Trading() {
             ))}
           </div>
 
-          {/* LIMIT / MARKET toggle */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             {['LIMIT', 'MARKET'].map(t => (
               <button key={t} onClick={() => setOrderType(t)} style={{
@@ -319,7 +341,6 @@ export default function Trading() {
             </div>
           )}
 
-          {/* Live market price */}
           {currentPrice && (
             <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: 8, textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: 'var(--text-secondary)', letterSpacing: '0.1em', marginBottom: 2 }}>MARKET</div>
@@ -370,7 +391,7 @@ export default function Trading() {
       </div>
 
       {/* ── COL 3 BOTTOM: Order book + recent trades ── */}
-      <div className="panel" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="panel" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border)' }}>
         <div className="panel-header">Order Book</div>
         <div style={{ flex: 1, overflow: 'auto' }}>
           <div style={{ padding: '2px 8px', fontSize: 9, color: 'var(--sell)', letterSpacing: '0.1em', borderBottom: '1px solid var(--border)' }}>ASKS</div>
