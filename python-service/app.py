@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from market_simulator import generate_price_series
+import market_simulator
 from chat_agent import get_chat_response
 
 app = Flask(__name__)
@@ -16,7 +16,11 @@ def health():
 
 @app.route("/api/market/ticks", methods=["GET"])
 def get_ticks():
-    df = generate_price_series()
+    # Advance the market by one tick on every poll, then return the full
+    # running history. This keeps the feed continuous instead of regenerating
+    # a brand new random series on every request.
+    market_simulator.tick()
+    df = market_simulator.get_price_series()
     records = df.to_dict(orient="records")
 
     for record in records:
@@ -31,20 +35,17 @@ def get_ticks():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.get_json(silent=True) or {}
-    user_message = data.get("message", "")
-    jwt_token = request.headers.get("Authorization", "").replace("Bearer ", "") or None
-    if not user_message:
-        return jsonify({"error": "message is required"}), 400
     try:
+        data = request.get_json()
+        user_message = data.get("message", "")
+        jwt_token = request.headers.get("Authorization", "").replace("Bearer ", "") or None
+        if not user_message:
+            return jsonify({"error": "message is required"}), 400
         reply = get_chat_response(user_message, jwt_token)
+        return jsonify({"reply": reply})
     except Exception as e:
-        # get_chat_response already handles the expected failure modes internally;
-        # this is a last-resort guard so the frontend always gets valid JSON back
-        # instead of Flask's HTML error page (which breaks res.json() client-side).
-        return jsonify({"reply": f"Unexpected server error: {e}"}), 200
-    return jsonify({"reply": reply})
+        return jsonify({"reply": f"AI service error: {str(e)}. Check that Ollama is running."}), 200
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(port=5001)
