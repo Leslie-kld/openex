@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import CandlestickChart from '../components/CandlestickChart'
 import { ticksToCandles } from '../utils/ohlc'
+import useChartZoom from '../hooks/useChartZoom'
 
 export default function Dashboard() {
   const { token, email } = useAuthStore()
@@ -11,30 +12,26 @@ export default function Dashboard() {
   const [balance, setBalance] = useState(null)
   const [error, setError] = useState('')
   const [ticks, setTicks] = useState([])
-  const [chartError, setChartError] = useState('')
   const [chartType, setChartType] = useState('line')
 
-  // Poll the market feed every 5s so the chart is actually live.
   useEffect(() => {
-    const load = () => {
+    const load = () =>
       fetch('http://localhost:5001/api/market/ticks')
         .then(r => r.json())
-        .then(data => {
-          setChartError('')
-          setTicks(data.map(d => ({
-            timestamp: d.timestamp,
-            time: d.timestamp.slice(11, 19),
-            price: parseFloat(d.price.toFixed(2)),
-            ma10: d.moving_average_10 ? parseFloat(d.moving_average_10.toFixed(2)) : null,
-            ma30: d.moving_average_30 ? parseFloat(d.moving_average_30.toFixed(2)) : null,
-          })))
-        })
-        .catch(() => setChartError('Could not load market data — is the Python service running on :5001?'))
-    }
+        .then(data => setTicks(data.map(d => ({
+          timestamp: d.timestamp,
+          time: d.timestamp.slice(11, 19),
+          price: parseFloat(d.price.toFixed(2)),
+          ma10: d.moving_average_10 ? parseFloat(d.moving_average_10.toFixed(2)) : null,
+          ma30: d.moving_average_30 ? parseFloat(d.moving_average_30.toFixed(2)) : null,
+        }))))
+        .catch(() => {})
     load()
-    const id = setInterval(load, 5000)
+    const id = setInterval(load, 3000)
     return () => clearInterval(id)
   }, [])
+
+  const { containerRef, visibleData, visibleCount } = useChartZoom(ticks, { min: 20, max: 400, step: 15 })
 
   const handleDeposit = async (e) => {
     e.preventDefault()
@@ -48,21 +45,17 @@ export default function Dashboard() {
     }
   }
 
-  if (!token) {
-    return (
-      <div style={{ padding: '2rem', fontFamily: 'var(--mono)' }}>
-        <h1>Dashboard</h1>
-        <p>Please log in to view your account.</p>
-      </div>
-    )
-  }
+  if (!token) return (
+    <div style={{ padding: 40, color: 'var(--text-secondary)', fontFamily: 'var(--mono)', fontSize: 12 }}>
+      ⚠ Not authenticated
+    </div>
+  )
 
   const latest = ticks[ticks.length - 1]
-  const candles = ticksToCandles(ticks, 10)
+  const candles = ticksToCandles(visibleData, 10)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Stat bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         {[
           { label: 'Account', value: email },
@@ -77,7 +70,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Chart area */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div className="panel" style={{ flex: 1, margin: 10, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div className="panel-header" style={{ justifyContent: 'space-between' }}>
@@ -95,20 +87,17 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          <div style={{ flex: 1, minHeight: 0 }}>
-            {chartError && (
-              <div style={{ padding: 16, color: 'var(--sell)', fontSize: 12, fontFamily: 'var(--mono)' }}>
-                {chartError}
-              </div>
-            )}
-            {!chartError && ticks.length === 0 && (
-              <div style={{ padding: 16, color: 'var(--text-dim)', fontSize: 12, fontFamily: 'var(--mono)' }}>
-                Waiting for market data...
-              </div>
-            )}
-            {!chartError && ticks.length > 0 && chartType === 'line' && (
+          <div ref={containerRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <div style={{
+              position: 'absolute', top: 4, right: 8, zIndex: 5,
+              fontSize: 9, color: 'var(--text-dim)', fontFamily: 'var(--mono)',
+              background: 'var(--bg-panel)', padding: '2px 6px', border: '1px solid var(--border)',
+            }}>
+              {visibleCount} ticks · scroll to zoom
+            </div>
+            {chartType === 'line' ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={ticks}>
+                <AreaChart data={visibleData}>
                   <defs>
                     <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#e53935" stopOpacity={0.18} />
@@ -124,16 +113,14 @@ export default function Dashboard() {
                   <Area type="monotone" dataKey="ma30" stroke="#ffd600" strokeWidth={1} fill="none" dot={false} name="MA30" connectNulls strokeDasharray="4 2" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
-            )}
-            {!chartError && ticks.length > 0 && chartType === 'candle' && (
+            ) : (
               <CandlestickChart data={candles} />
             )}
           </div>
         </div>
       </div>
 
-      {/* Bottom strip — deposit */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderTop: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         <span style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Fund Account</span>
         <form onSubmit={handleDeposit} style={{ display: 'flex', gap: 6 }}>
           <input type="number" step="0.01" min="0.01" placeholder="0.00" value={amount}
